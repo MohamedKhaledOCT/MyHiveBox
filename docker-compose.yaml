@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. خدمة الكاش
+  valkey:
+    image: valkey/valkey:7.2
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - hivebox-net
+
+  # 2. خدمة التخزين
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data --console-address ":9001"
+    networks:
+      - hivebox-net
+
+  # 3. أداة مساعدة لإنشاء الـ Bucket تلقائياً
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY};
+      /usr/bin/mc mb myminio/${MINIO_BUCKET};
+      /usr/bin/mc anonymous set public myminio/${MINIO_BUCKET};
+      exit 0;
+      "
+    networks:
+      - hivebox-net
+
+networks:
+  hivebox-net:
+    driver: bridge

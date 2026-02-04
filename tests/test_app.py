@@ -1,24 +1,32 @@
 import pytest
 import requests_mock
+from unittest.mock import patch, MagicMock
 from app import app
 
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
+    
+    # 1. نجهز رديس "وهمي" (Fake Redis)
+    mock_redis = MagicMock()
+    mock_redis.get.return_value = None  # الكاش فارغ
+    mock_redis.exists.return_value = 0  # المفتاح غير موجود
+    mock_redis.ping.return_value = True # الاتصال سليم
+    
+    # 2. نستبدل الرديس الحقيقي بالوهمي أثناء الاختبار
+    with patch('app.CACHE', mock_redis):
+        with app.test_client() as client:
+            yield client
 
 def test_version_endpoint(client):
     """Test the /version endpoint returns correct data."""
     response = client.get('/version')
     assert response.status_code == 200
-    # ✅ Updated to v0.0.2
     assert response.json == {"version": "v0.0.2"}
 
 def test_temperature_endpoint(client):
     """Test the /temperature endpoint returns valid data."""
     with requests_mock.Mocker() as m:
-        # Mocking the OpenSenseMap API response
         m.get(requests_mock.ANY, json={
             "sensors": [{"title": "Temperatur", "unit": "°C", "lastMeasurement": {
                 "value": "22.5",

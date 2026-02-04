@@ -72,5 +72,3 @@ def test_env_var_configuration():
     """Test that default SENSEBOX_IDS are loaded correctly as a list."""
     assert isinstance(SENSEBOX_IDS, list)
     assert len(SENSEBOX_IDS) > 0
-
-

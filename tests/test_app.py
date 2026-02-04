@@ -31,7 +31,7 @@ def test_temperature_status_cold(client):
         # Mock API to return a low temperature (5.0)
         m.get(requests_mock.ANY, json={
             "sensors": [{"title": "Temperature", "lastMeasurement": {
-                "value": "5.0", 
+                "value": "5.0",
                 "createdAt": "2099-01-01T00:00:00.000Z" # Future date is valid
             }}]
         })
@@ -46,7 +46,7 @@ def test_temperature_status_good(client):
         # Mock API to return a good temperature (25.0)
         m.get(requests_mock.ANY, json={
             "sensors": [{"title": "Temperature", "lastMeasurement": {
-                "value": "25.0", 
+                "value": "25.0",
                 "createdAt": "2099-01-01T00:00:00.000Z"
             }}]
         })
@@ -60,7 +60,7 @@ def test_temperature_status_hot(client):
         # Mock API to return a high temperature (40.0)
         m.get(requests_mock.ANY, json={
             "sensors": [{"title": "Temperature", "lastMeasurement": {
-                "value": "40.0", 
+                "value": "40.0",
                 "createdAt": "2099-01-01T00:00:00.000Z"
             }}]
         })
@@ -73,4 +73,4 @@ def test_env_var_configuration():
     assert isinstance(SENSEBOX_IDS, list)
     assert len(SENSEBOX_IDS) > 0
 
-    
+

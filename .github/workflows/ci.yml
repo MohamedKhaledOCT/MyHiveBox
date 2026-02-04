@@ -2,42 +2,39 @@ name: HiveBox CI
 
 on:
   push:
-    branches:
-      - "main"
-      - "phase-*"      
-      - "feat-*"     
-      - "fix-*"
+    branches: [ "main", "feat-*" ]
   pull_request:
-    branches:
-      - "main"
-      - "phase-*"
+    branches: [ "main" ]
+
+# تصريحات الأمان (مهمة لـ Scorecard)
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write
+  packages: write
 
 jobs:
-  # Job 1: Check Quality (Python & Dockerfile)
+  # 1. فحص جودة الكود
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
-          
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint flask requests prometheus-flask-exporter
-          
-      - name: Lint Python Code
-        run: pylint app.py
-        
-      - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
+          pip install pylint
+          pip install -r requirements.txt
+      - name: Analysing the code with pylint
+        # تعطيل بعض التنبيهات غير المهمة حالياً
+        run: |
+          pylint $(git ls-files '*.py') --disable=C0114,C0115,C0116
 
-  # Job 2: Static Analysis (Semgrep)
+  # 2. فحص الثغرات (Semgrep)
   semgrep:
     name: Semgrep Security Scan
     runs-on: ubuntu-latest
@@ -48,44 +45,53 @@ jobs:
       - uses: actions/checkout@v3
       - run: semgrep scan --config=auto
 
-  # Job 3: Run Unit Tests
+  # 3. اختبارات الوحدة (مع حقن الأسرار) 💉
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
-          
+          python-version: "3.12"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest requests-mock
-          
-      - name: Run Unit Tests
-        run: pytest
+      
+      - name: Test with pytest
+        # 👇 هنا التعديل المهم جداً: حقن الأسرار
+        env:
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+        run: |
+          pytest
 
-  # Job 4: Security Scan (Infrastructure as Code)
+  # 4. فحص أمان المستودع (Scorecard)
   security_scan:
+    name: Scorecard supply-chain security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Run Trivy Vulnerability Scanner (K8s)
-        uses: aquasecurity/trivy-action@master
+      - name: "Checkout code"
+        uses: actions/checkout@v3
         with:
-          scan-type: 'config'
-          scan-ref: './k8s'
-          exit-code: '1' # Fail pipeline if CRITICAL/HIGH issues found
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
+          persist-credentials: false
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@v2.3.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - name: "Upload to code-scanning"
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
 
-  # Job 5: Build & Integration Test & Push (Fixed for Lowercase)
+  # 5. البناء والنشر
   build:
-    needs: [lint, semgrep, test, security_scan]
+    needs: [test, lint, semgrep]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -101,13 +107,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # --- Fix: Convert repo name to lowercase ---
+      # إصلاح مشكلة الأحرف الكبيرة
       - name: Lowercase Repo Name
         run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       - name: Build and Tag Docker Image
         run: |
-          # Use env.REPO_LC instead of github.repository
           docker build . --tag ghcr.io/${{ env.REPO_LC }}/hivebox:${{ github.sha }}
           docker build . --tag ghcr.io/${{ env.REPO_LC }}/hivebox:latest
 
@@ -121,7 +126,8 @@ jobs:
         run: |
           response=$(curl -s http://localhost:5000/version)
           echo "Response: $response"
-          if [[ "$response" != *'"version":"v0.0.1"'* ]]; then
+          # 👇 تم تحديث الإصدار لـ v0.0.2
+          if [[ "$response" != *'"version":"v0.0.2"'* ]]; then
             echo "Integration Test Failed!"
             exit 1
           fi

@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # 1. مراقبة مكتبات بايثون (تحديث أسبوعي)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # تحديد عدد الـ PRs المفتوحة لتجنب الفوضى
+    open-pull-requests-limit: 5
+
+  # 2. مراقبة صور دوكر (تحديث أسبوعي)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

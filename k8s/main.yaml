@@ -76,7 +76,7 @@ kind: Service
 metadata:
   name: hivebox-service
 spec:
-  type: LoadBalancer
+  type: ClusterIP        # <--- تم التعديل هنا ليعمل بسلاسة مع Argo CD
   selector:
     app: hivebox
   ports:

@@ -100,7 +100,7 @@ spec:
     spec:
       containers:
       - name: hivebox
-        image: ghcr.io/mohamedkhaledoct/myhivebox:latest
+        image: ghcr.io/mohamedkhaledoct/myhivebox:c89ef810d41ca988ac8bf3696ad6c89c54ff560f
         imagePullPolicy: Always
         ports:
         - containerPort: 5000

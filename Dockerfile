@@ -1,5 +1,5 @@
 # Use specific version for stability (matches your local python version)
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Set environment variables
 # PYTHONDONTWRITEBYTECODE: Prevents Python from writing .pyc files

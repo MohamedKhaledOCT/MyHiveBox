@@ -61,6 +61,8 @@ jobs:
   security_scan:
     name: Scorecard supply-chain security
     runs-on: ubuntu-latest
+    # --- هذا هو التعديل: لا تعمل إلا على الفرع الرئيسي ---
+    if: github.ref == 'refs/heads/main'
     permissions:
       security-events: write
       id-token: write
@@ -83,6 +85,7 @@ jobs:
           sarif_file: results.sarif
 
   build:
+    # تم إزالة security_scan من القائمة لأنها قد لا تعمل
     needs: [test, lint, semgrep]
     runs-on: ubuntu-latest
     permissions:
